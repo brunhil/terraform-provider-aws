@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -268,6 +269,11 @@ func resourceAwsLakeFormationPermissionsRead(d *schema.ResourceData, meta interf
 					continue
 				}
 
+				// Need to ensure we are comparing the correct principal
+				if !resourceAwsLakeFormationPermissionsComparePrincipal(input.Principal, permission.Principal) {
+					continue
+				}
+
 				if resourceAwsLakeFormationPermissionsCompareResource(*matchResource, *permission.Resource) {
 					principalResourcePermissions = append(principalResourcePermissions, permission)
 				}
@@ -288,6 +294,11 @@ func resourceAwsLakeFormationPermissionsRead(d *schema.ResourceData, meta interf
 		err = conn.ListPermissionsPages(input, func(resp *lakeformation.ListPermissionsOutput, lastPage bool) bool {
 			for _, permission := range resp.PrincipalResourcePermissions {
 				if permission == nil {
+					continue
+				}
+
+				// Need to ensure we are comparing the correct principal
+				if !resourceAwsLakeFormationPermissionsComparePrincipal(input.Principal, permission.Principal) {
 					continue
 				}
 
@@ -413,6 +424,24 @@ func resourceAwsLakeFormationPermissionsCompareResource(in, out lakeformation.Re
 	}
 
 	return reflect.DeepEqual(in, out)
+}
+
+func resourceAwsLakeFormationPermissionsComparePrincipal(base *lakeformation.DataLakePrincipal, compare *lakeformation.DataLakePrincipal) bool {
+	if base == nil || compare == nil {
+		return false
+	}
+
+	basePrincipalName := ""
+	if basePrincipalIdentifier := base.DataLakePrincipalIdentifier; basePrincipalIdentifier != nil {
+		basePrincipalName = *basePrincipalIdentifier
+	}
+
+	comparePrincipalName := ""
+	if comparePrincipalIdentifier := compare.DataLakePrincipalIdentifier; comparePrincipalIdentifier != nil {
+		comparePrincipalName = *comparePrincipalIdentifier
+	}
+
+	return strings.EqualFold(basePrincipalName, comparePrincipalName)
 }
 
 // expandLakeFormationResourceType returns the Lake Formation resource type represented by the resource.

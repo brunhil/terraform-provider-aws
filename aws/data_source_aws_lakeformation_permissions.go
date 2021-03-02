@@ -189,6 +189,11 @@ func dataSourceAwsLakeFormationPermissionsRead(d *schema.ResourceData, meta inte
 					continue
 				}
 
+				// Need to ensure we are comparing the correct principal
+				if !resourceAwsLakeFormationPermissionsComparePrincipal(input.Principal, permission.Principal) {
+					continue
+				}
+
 				if resourceAwsLakeFormationPermissionsCompareResource(*matchResource, *permission.Resource) {
 					principalResourcePermissions = append(principalResourcePermissions, permission)
 				}
@@ -209,6 +214,11 @@ func dataSourceAwsLakeFormationPermissionsRead(d *schema.ResourceData, meta inte
 		err = conn.ListPermissionsPages(input, func(resp *lakeformation.ListPermissionsOutput, lastPage bool) bool {
 			for _, permission := range resp.PrincipalResourcePermissions {
 				if permission == nil {
+					continue
+				}
+
+				// Need to ensure we are comparing the correct principal
+				if !resourceAwsLakeFormationPermissionsComparePrincipal(input.Principal, permission.Principal) {
 					continue
 				}
 
